@@ -169,7 +169,7 @@ Silva, R.R. da, Dorrestein, P.C., and Quinn, R.A. (2015). Illuminating the dark 
 ## Main approaches
 
 ```{r}
-expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
+p_main <- expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
             y = c("Quantum chemistry", "Combinatorial optimization methods",
                   "Heuristic-based methods", "Machine learning models")) %>% 
   mutate(lab = c("QCEIMS", "", 
@@ -181,10 +181,11 @@ expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
   geom_text() +
   theme_void() +
   theme(axis.text = element_text(color = "black"))
+
+p_main
 ```
 
-
-
+# From compound to spectra
 
 ## Quantum chemistry
 
@@ -196,7 +197,7 @@ Weakness: computational cost.
 
 ## Combinatorial optimization methods
 
-Enumerate all possible fragments of candidate structures by systematic bond cleavage.
+Enumerate all possible fragments of candidate structures by systematic bond cleavage. Fragmentation tree (FT) is computed directly from an MS$^2$ spectrum.
 
 <img src="figures/midas.gif" width="350px" class="center">
 
@@ -213,4 +214,85 @@ E.g., Mass Frontier, LipidBlast, LipidMatch.
 Fragmentation can be seen as a stochastic homogeneous Markov process (e.g., CFM-ID., NEIMS.
 
 <img src="figures/ml.png" width="450px" class="center">
+
+## Machine learning methods
+
+```{r}
+set.seed(1)
+
+theme_set(theme_bw())
+
+dat <- rbind(data.frame(x = 1L:5, y = 1L:5 + rnorm(5, 0.02),
+                        region = "Interpolation"),
+             data.frame(x = 6L:10, y = (6L:10*2.5 + rnorm(5, 0.02)),
+                        region = "Extrapolation"))
+
+p1 <- filter(dat, region == "Interpolation") %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_point() 
+
+p1
+```
+
+## Machine learning methods
+
+```{r}
+p1 + geom_smooth(method = "lm") + ggtitle("Interpolation")
+```
+
+## Machine learning methods
+
+```{r}
+p1 +
+  geom_smooth(method = "lm", fullrange = TRUE) +
+  geom_point(data = dat, aes(color = region)) + 
+  scale_color_manual("", values = c("Red", "Blue")) +
+  ggtitle("Extrapolation")
+```
+
+# From spectra to compound
+
+## Main approaches
+
+```{r}
+p_main
+```
+
+
+## Combinatorial optimization methods
+
+As lipids are based on fundamental building blocks, their fragmentation leads to reoccurring and fairly predictive patterns. The is to choose the fragmentation tree that best explains the observed data.
+
+E.g., SIRIUS.
+
+## Heuristic-based methods
+
+Fragmentation patterns are constructed utilizing so-called decision rulesets that are tested against experimental spectra.
+
+E.g., Lipid Data Analyzer, LipidXplorer.
+
+## Machine learning approaches
+
+Supervised: FingerID, DeepEI, CSI:FingerID.
+
+Unsupervised: MS2LDA, Word2Vec.
+
+## Summary
+
+```{r}
+p_main <- expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
+            y = c("Quantum chemistry", "Combinatorial optimization methods",
+                  "Heuristic-based methods", "Machine learning models")) %>% 
+  mutate(lab = c("Small compounds,\nmechanistic insights", "", 
+                 "Small compounds, lipids", "Small compounds,\nlipids",
+                 "Lipids", "Lipids",
+                 "Small compounds", "Small compounds,\nbiotransformations")) %>% 
+  ggplot(aes(x = x, y = y, label = lab)) +
+  geom_tile(fill = NA, color = "black") +
+  geom_text() +
+  theme_void() +
+  theme(axis.text = element_text(color = "black"))
+
+p_main
+```
 
