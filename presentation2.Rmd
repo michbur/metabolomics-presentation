@@ -1,0 +1,203 @@
+---
+title: "Compound identification in metabolomics: an R approach"
+author: "Michał Burdukiewicz"
+date: "25-06-2021"
+output: 
+  ioslides_presentation:
+    theme: "simplex"
+---
+
+<link href="https://fonts.googleapis.com/css?family=Montserrat&display=swap" rel="stylesheet">
+
+<style>
+slides > slide {
+  font-family: 'Montserrat', sans-serif;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+
+}
+
+
+</style>
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rgl)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(patchwork)
+library(ggthemes)
+opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+options(scipen=999)  # turn-off scientific notation like 1e+48
+theme_set(theme_bw())  # pre-set the bw theme.
+```
+
+# Compound identification
+
+## Summary
+
+```{r}
+p_main <- expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
+            y = c("Quantum chemistry", "Combinatorial optimization methods",
+                  "Heuristic-based methods", "Machine learning models")) %>% 
+  mutate(lab = c("Small compounds,\nmechanistic insights", "", 
+                 "Small compounds, lipids", "Small compounds,\nlipids",
+                 "Lipids", "Lipids",
+                 "Small compounds", "Small compounds,\nbiotransformations")) %>% 
+  ggplot(aes(x = x, y = y, label = lab)) +
+  geom_tile(fill = NA, color = "black") +
+  geom_text() +
+  theme_void() +
+  theme(axis.text = element_text(color = "black"))
+
+p_main
+```
+
+## Software
+
+```{r}
+p_main <- expand.grid(x = c("From compound to spectra\n", "From spectra to compound\n"),
+            y = c("Quantum chemistry", "Combinatorial optimization methods",
+                  "Heuristic-based methods", "Machine learning models")) %>% 
+  mutate(lab = c("QCEIMS", "", 
+                 "MIDAS-G, MetFrag, MAGMa+", "SIRIUS",
+                 "Mass Frontier, LipidBlast,\nLipidMatch", "Lipid Data Analyzer, LipidXplorer",
+                 "CFM-ID., NEIMS", "FingerID, DeepEI")) %>% 
+  ggplot(aes(x = x, y = y, label = lab)) +
+  geom_tile(fill = NA, color = "black") +
+  geom_text() +
+  theme_void() +
+  theme(axis.text = element_text(color = "black"))
+
+p_main
+```
+
+# CI workflow
+
+## Two-step procedure
+
+1. Identify the proper database using CEU Mass Mediator.
+2. Do a MetFrag search using an identified database.
+
+## CEU Mass Mediator
+
+Available for the command line processing as an R package.
+
+Gil-de-la-Fuente, A., Godzien, J., Saugar, S., Garcia-Carmona, R., Badran, H., Wishart, D.S., Barbas, C., and Otero, A. (2018). CEU Mass Mediator 3.0: A Metabolite Annotation Tool. Journal of Proteome Research.
+
+## CEU Mass Mediator
+
+```{r,echo=TRUE}
+library(httr)
+r <- POST("http://ceumass.eps.uspceu.es/api/batch", 
+          body = "Is anyone here?", encode = "json")
+
+res <- try(stop_for_status(r), silent = TRUE)
+
+print(res)
+```
+
+
+## MetFrag
+
+Available for the command line processing as an R package cmmr.
+
+Ruttkies, C., Schymanski, E.L., Wolf, S., Hollender, J., and Neumann, S. (2016). MetFrag relaunched: incorporating strategies beyond in silico fragmentation. Journal of Cheminformatics 8, 3.
+
+## MetFrag 
+
+```{r,echo=FALSE}
+settingsObject<-list()
+settingsObject[["DatabaseSearchRelativeMassDeviation"]]<-5.0
+settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]]<-0.001
+settingsObject[["FragmentPeakMatchRelativeMassDeviation"]]<-5.0
+settingsObject[["MetFragDatabaseType"]]<-"PubChem"
+settingsObject[["NeutralPrecursorMass"]]<-253.966126
+settingsObject[["PeakList"]]<-matrix(c(
+  90.97445, 681,
+  106.94476, 274,
+  110.02750, 110,
+  115.98965, 95,
+  117.98540, 384,
+  124.93547, 613,
+  124.99015, 146,
+  125.99793, 207,
+  133.95592, 777,
+  143.98846, 478,
+  144.99625, 352,
+  146.00410, 999,
+  151.94641, 962,
+  160.96668, 387,
+  163.00682, 782,
+  172.99055, 17,
+  178.95724, 678,
+  178.97725, 391,
+  180.97293, 999,
+  196.96778, 720,
+  208.96780, 999,
+  236.96245, 999,
+  254.97312, 999), ncol=2, byrow=TRUE)
+settingsObject[["NeutralPrecursorMolecularFormula"]]<-"C7H5Cl2FN2O3"
+settingsObject[["PrecursorCompoundIDs"]]<-c("50465", "57010914", "56974741", "88419651", "23354334")
+#
+# pre and post-processing filter
+#
+# define filters to filter unconnected compounds (e.g. salts)
+settingsObject[["MetFragPreProcessingCandidateFilter"]]<-c("UnconnectedCompoundFilter","IsotopeFilter")
+settingsObject[["MetFragPostProcessingCandidateFilter"]]<-c("InChIKeyFilter")
+settingsObject[1L:5]
+```
+
+## MetFrag
+
+```{r,echo=FALSE}
+settingsObject[6]
+```
+
+## MetFrag
+
+```{r,echo=FALSE}
+settingsObject[7L:10]
+```
+
+## MetFrag - results
+
+```{r,echo=FALSE}
+knitr::kable(readRDS("./data/metfrag-result.RDS")[1L:3, 1L:3])
+```
+
+## MetFrag - results
+
+<div style="float: left; width: 40%;">
+```{r,echo=FALSE,results='asis'}
+cat(paste0("* ", colnames(readRDS("./data/metfrag-result.RDS"))[1L:9]), sep = "\n\n")
+```
+</div>
+
+<div style="float: right; width: 60%;">
+```{r,echo=FALSE,results='asis'}
+cat(paste0("* ", colnames(readRDS("./data/metfrag-result.RDS"))[10L:18]), sep = "\n\n")
+```
+</div>
+
+# Summary
+
+## General remarks
+
+1. We are not limited to R.
+2. Intented solution won't be a command line tool, but rather a clickable interface.
+
+## Questions
+
+1. Why run CEU Mass Mediator at all? Instead, we can run MetFrag on all available databases.
+2. What is the easiest way to import data? How to limit the number of clicks?
+3. Can we make a solution independent from the web services?
+
+
+
